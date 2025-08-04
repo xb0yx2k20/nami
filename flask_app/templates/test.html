@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Тест JavaScript</title>
+</head>
+<body>
+    <h1>Тест JavaScript</h1>
+    <button id="test-btn">Тест кнопка</button>
+    <div id="result"></div>
+    
+    <script>
+        console.log('Тестовая страница загружена');
+        
+        document.getElementById('test-btn').addEventListener('click', function() {
+            console.log('Кнопка нажата');
+            document.getElementById('result').textContent = 'Кнопка работает!';
+            
+            // Тестируем API
+            fetch('/search_logs', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    filters: {
+                        area: 'Не учитывать область',
+                        selected_topics: [],
+                        weather_types: []
+                    }
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                console.log('API ответ:', data);
+                document.getElementById('result').textContent = 'API работает! Найдено логов: ' + data.data.length;
+            })
+            .catch(error => {
+                console.error('Ошибка API:', error);
+                document.getElementById('result').textContent = 'Ошибка API: ' + error.message;
+            });
+        });
+    </script>
+</body>
+</html> 

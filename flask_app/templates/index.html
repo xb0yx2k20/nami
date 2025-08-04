@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Сервис поиска логов</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-item active"><span class="icon">🔍</span> Search logs</div>
+        <div class="sidebar-item"><span class="icon">📝</span> Request to service</div>
+        <div class="sidebar-item"><span class="icon">🚗</span> ADAS cases</div>
+        <div class="sidebar-item"><span class="icon">⚙️</span> Service control page</div>
+    </aside>
+    <main class="main-panel">
+        <div class="top-row">
+            <select class="instruction-select">
+                <option>Инструкция по использованию сервиса</option>
+            </select>
+            <label class="heatmap-toggle">
+                <input type="checkbox" id="heatmap-toggle"> Отобразить концентрацию маршрутов
+            </label>
+        </div>
+        <div class="content-row">
+            <section class="filters">
+                <form id="search-form" class="search-form">
+                    <div class="radio-group">
+                        <span class="section-label">Логи из:</span>
+                        <label><input type="radio" name="area" value="Не учитывать область" checked> Не учитывать область</label>
+                        <label><input type="radio" name="area" value="Город"> Город</label>
+                        <label><input type="radio" name="area" value="НАМИ"> НАМИ</label>
+                        <label><input type="radio" name="area" value="Область на карте"> Область на карте</label>
+                    </div>
+                    <div class="radio-group">
+                        <span class="section-label">Что использовать:</span>
+                        <label><input type="radio" name="search_by" value="topics" checked> Топики</label>
+                        <label><input type="radio" name="search_by" value="topic_types"> Типы топиков</label>
+                    </div>
+                    <div class="form-row">
+                        <span class="section-label" id="topics-label">Топики:</span>
+                        <div class="topics-container">
+                            <div class="topics-search-container">
+                                <input type="text" id="topics-search" placeholder="Поиск топиков..." class="topics-search">
+                                <div class="topics-search-icon">🔍</div>
+                            </div>
+                            <div class="quick-topics">
+                                <span class="quick-label">Быстрый выбор:</span>
+                                <div class="quick-buttons" id="quick-topics-buttons">
+                                    <!-- Быстрые кнопки будут добавлены через JavaScript -->
+                                </div>
+                            </div>
+                            <div class="topics-groups" id="topics-groups">
+                                <!-- Группы топиков будут добавлены через JavaScript -->
+                            </div>
+                            <select name="selected_topics" id="topics-select" multiple style="display: none;"></select>
+                        </div>
+                    </div>
+                    <div class="radio-group">
+                        <span class="section-label">Даты записи логов:</span>
+                        <label><input type="radio" name="date_mode" value="all" checked> За всё время</label>
+                        <label><input type="radio" name="date_mode" value="range"> Уточнить даты</label>
+                    </div>
+                    <div class="form-row" id="date-section" style="display:none;">
+                        <input type="date" name="date_start"> — <input type="date" name="date_end">
+                    </div>
+                    <div class="radio-group">
+                        <span class="section-label">Время записи логов:</span>
+                        <label><input type="radio" name="time_mode" value="all" checked> Любое время</label>
+                        <label><input type="radio" name="time_mode" value="hours"> Уточнить часы</label>
+                        <label><input type="radio" name="time_mode" value="sun"> Уточнить положение солнца</label>
+                    </div>
+                    <div class="form-row" id="time-section" style="display:none;">
+                        <input type="number" name="time_start" min="0" max="23" value="0" placeholder="Начало"> — <input type="number" name="time_end" min="0" max="23" value="23" placeholder="Конец">
+                    </div>
+                    <div class="form-row" id="sun-section" style="display:none;">
+                        <div class="sun-slider-label">0-1: Темно | 1-3: Солнце за горизонтом | 3-10: Солнце выше горизонта</div>
+                        <div class="sun-sliders">
+                            <input type="range" name="sun_start" min="0" max="10" step="0.1" value="0" id="sun-start">
+                            <input type="range" name="sun_end" min="0" max="10" step="0.1" value="10" id="sun-end">
+                        </div>
+                        <div class="sun-slider-values"><span id="sun-start-val">0</span> — <span id="sun-end-val">10</span></div>
+                    </div>
+                    <div class="radio-group">
+                        <span class="section-label">Погода:</span>
+                        <label><input type="radio" name="weather_mode" value="ignore" checked> Не учитывать</label>
+                        <label><input type="radio" name="weather_mode" value="select"> Уточнить погоду</label>
+                    </div>
+                    <div class="form-row" id="weather-section" style="display:none;">
+                        <select name="weather_types" id="weather-select" multiple></select>
+                    </div>
+                    <button type="submit" class="search-btn">Поиск логов</button>
+                </form>
+            </section>
+            <section class="map-section">
+                <div id="leaflet-map" class="map-container"></div>
+            </section>
+        </div>
+        <section class="results-section">
+            <div id="results">
+                <div id="logs-summary" style="margin-bottom: 10px;"></div>
+                <table class="table-logs" id="logs-table" style="width:100%; display:none;">
+                    <thead>
+                        <tr>
+                            <th>Превью</th>
+                            <th>Путь к логу</th>
+                            <th>Маршрут</th>
+                            <th>GIF</th>
+                            <th>Размер(GB)</th>
+                            <th>Дата</th>
+                            <th>Время</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div id="modal" class="modal" style="display:none;">
+                <div class="modal-content">
+                    <span class="close" id="modal-close">&times;</span>
+                    <div id="modal-body"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="/static/main.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+</body>
+</html> 
