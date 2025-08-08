@@ -18,9 +18,23 @@
     </aside>
     <main class="main-panel">
         <div class="top-row">
-            <select class="instruction-select">
-                <option>Инструкция по использованию сервиса</option>
-            </select>
+            <div class="instruction-dropdown">
+                <div class="instruction-header">
+                    <span>📖 Инструкция по использованию сервиса</span>
+                    <span class="instruction-toggle">▼</span>
+                </div>
+                <div class="instruction-content" style="display: none;">
+                    <h3>Как использовать сервис поиска логов:</h3>
+                    <ol>
+                        <li><strong>Выберите область поиска:</strong> Не учитывать область, Город, НАМИ или нарисуйте область на карте</li>
+                        <li><strong>Выберите топики:</strong> Используйте поиск или быстрые кнопки для выбора нужных топиков</li>
+                        <li><strong>Настройте фильтры:</strong> Укажите даты, время записи и погодные условия</li>
+                        <li><strong>Запустите поиск:</strong> Нажмите кнопку "Поиск логов"</li>
+                        <li><strong>Просмотрите результаты:</strong> Кликните на лог для получения подробной информации</li>
+                    </ol>
+                    <p><strong>Совет:</strong> Используйте тепловую карту для визуализации концентрации маршрутов.</p>
+                </div>
+            </div>
             <label class="heatmap-toggle">
                 <input type="checkbox" id="heatmap-toggle"> Отобразить концентрацию маршрутов
             </label>
@@ -38,7 +52,6 @@
                     <div class="radio-group">
                         <span class="section-label">Что использовать:</span>
                         <label><input type="radio" name="search_by" value="topics" checked> Топики</label>
-                        <label><input type="radio" name="search_by" value="topic_types"> Типы топиков</label>
                     </div>
                     <div class="form-row">
                         <span class="section-label" id="topics-label">Топики:</span>

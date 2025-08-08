@@ -55,13 +55,14 @@ window.addEventListener('DOMContentLoaded', () => {
         weatherChoices = null;
     }
     
-    loadTopicsOrTypes();
+    loadTopics();
     loadWeather();
     
     // Инициализация улучшенного меню топиков
     initializeTopicsMenu();
     
-    document.querySelectorAll('input[name="search_by"]').forEach(r => r.addEventListener('change', loadTopicsOrTypes));
+    // Инициализация разворачиваемой инструкции
+    initializeInstructionDropdown();
     document.querySelectorAll('input[name="area"]').forEach(r => r.addEventListener('change', function() {
         const mapSection = document.querySelector('.map-section');
         if (mapSection) {
@@ -289,9 +290,8 @@ function updateHiddenSelect() {
     });
 }
 
-function loadTopicsOrTypes() {
-    const searchBy = document.querySelector('input[name="search_by"]:checked').value;
-    fetch(searchBy === 'topics' ? '/get_topics' : '/get_topic_types')
+function loadTopics() {
+    fetch('/get_topics')
         .then(r => r.json())
         .then(data => {
             allTopics = data.data || [];
@@ -433,6 +433,20 @@ function loadWeather() {
         });
 }
 
+function initializeInstructionDropdown() {
+    const instructionHeader = document.querySelector('.instruction-header');
+    const instructionContent = document.querySelector('.instruction-content');
+    const instructionToggle = document.querySelector('.instruction-toggle');
+    
+    if (instructionHeader && instructionContent && instructionToggle) {
+        instructionHeader.addEventListener('click', () => {
+            const isVisible = instructionContent.style.display !== 'none';
+            instructionContent.style.display = isVisible ? 'none' : 'block';
+            instructionToggle.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+    }
+}
+
 // --- Отправка формы и вывод результатов ---
 const searchForm = document.getElementById('search-form');
 if (searchForm) {
@@ -565,7 +579,8 @@ function showLogModal(logPath) {
         html += `<div><b>Путь к логу:</b> ${logPath}</div>`;
         html += `<div style='margin:10px 0;'><b>Маршрут испытания:</b><br>`;
         if (log.map_link) {
-            html += `<iframe src='${log.map_link}' width='100%' height='200' style='border-radius:10px; border:none;'></iframe>`;
+            // Простая карта с маркерами маршрута
+            html += `<div id="route-map" style="width: 100%; height: 200px; border-radius: 10px; border: 1px solid #393c41;"></div>`;
         } else {
             html += 'Нет маршрута';
         }
@@ -589,8 +604,51 @@ function showLogModal(logPath) {
         document.getElementById('modal-body').innerHTML = html;
         document.getElementById('modal').style.display = '';
         
+        // Инициализируем простую карту маршрута
+        if (log.map_link) {
+            initializeRouteMap();
+        }
+        
         // Загружаем GIF превью для каждого топика
         loadGifPreviews(logPath, log.topics || []);
+    });
+}
+
+function initializeRouteMap() {
+    const mapContainer = document.getElementById('route-map');
+    if (!mapContainer) return;
+    
+    // Создаем простую карту с маркерами маршрута
+    const routeMap = L.map('route-map').setView([55.845204, 37.526332], 15);
+    
+    // Используем простую тайловую карту без избыточного интерфейса
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '',
+        maxZoom: 18
+    }).addTo(routeMap);
+    
+    // Добавляем маркеры маршрута
+    const routePoints = [
+        [55.845204, 37.526332, 'Начало маршрута'],
+        [55.846, 37.528, 'Точка 1'],
+        [55.844, 37.523, 'Точка 2'],
+        [55.847, 37.530, 'Точка 3'],
+        [55.843, 37.520, 'Конец маршрута']
+    ];
+    
+    routePoints.forEach((point, index) => {
+        const marker = L.marker([point[0], point[1]]).addTo(routeMap);
+        marker.bindPopup(`<b>${point[2]}</b><br>Координаты: ${point[0]}, ${point[1]}`);
+        
+        // Соединяем точки линией
+        if (index > 0) {
+            const prevPoint = routePoints[index - 1];
+            L.polyline([[prevPoint[0], prevPoint[1]], [point[0], point[1]]], {
+                color: '#ff4d4f',
+                weight: 3,
+                opacity: 0.8
+            }).addTo(routeMap);
+        }
     });
 }
 
