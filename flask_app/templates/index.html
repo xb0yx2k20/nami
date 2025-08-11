@@ -52,14 +52,12 @@
                     <div class="radio-group">
                         <span class="section-label">Что использовать:</span>
                         <label><input type="radio" name="search_by" value="topics" checked> Топики</label>
+                        <label><input type="radio" name="search_by" value="topic_types"> Типы топиков</label>
                     </div>
                     <div class="form-row">
                         <span class="section-label" id="topics-label">Топики:</span>
                         <div class="topics-container">
-                            <div class="topics-search-container">
-                                <input type="text" id="topics-search" placeholder="Поиск топиков..." class="topics-search">
-                                <div class="topics-search-icon">🔍</div>
-                            </div>
+                            
                             <div class="quick-topics">
                                 <span class="quick-label">Быстрый выбор:</span>
                                 <div class="quick-buttons" id="quick-topics-buttons">
@@ -69,7 +67,6 @@
                             <div class="topics-groups" id="topics-groups">
                                 <!-- Группы топиков будут добавлены через JavaScript -->
                             </div>
-                            <select name="selected_topics" id="topics-select" multiple style="display: none;"></select>
                         </div>
                     </div>
                     <div class="radio-group">

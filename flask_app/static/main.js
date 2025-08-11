@@ -1,5 +1,5 @@
-// --- Choices.js для мультивыбора ---
-let topicsChoices, weatherChoices;
+// --- Выбор топиков ---
+let weatherChoices;
 let selectedTopics = new Set();
 let allTopics = [];
 let topicsGroups = {};
@@ -46,16 +46,17 @@ window.addEventListener('DOMContentLoaded', () => {
     };
     
     try {
-        topicsChoices = new Choices('#topics-select', choicesConfig);
         weatherChoices = new Choices('#weather-select', choicesConfig);
-        console.log('Choices.js инициализированы успешно');
+        console.log('Choices.js инициализирован успешно для погоды');
     } catch (error) {
         console.error('Ошибка инициализации Choices.js:', error);
-        topicsChoices = null;
         weatherChoices = null;
     }
     
-    loadTopics();
+    // topicsChoices больше не нужен, используем кастомный интерфейс
+    topicsChoices = null;
+    
+    loadTopicsOrTypes();
     loadWeather();
     
     // Инициализация улучшенного меню топиков
@@ -63,6 +64,9 @@ window.addEventListener('DOMContentLoaded', () => {
     
     // Инициализация разворачиваемой инструкции
     initializeInstructionDropdown();
+    
+    // Переключение режимов: топики / типы топиков
+    document.querySelectorAll('input[name="search_by"]').forEach(r => r.addEventListener('change', loadTopicsOrTypes));
     document.querySelectorAll('input[name="area"]').forEach(r => r.addEventListener('change', function() {
         const mapSection = document.querySelector('.map-section');
         if (mapSection) {
@@ -191,19 +195,22 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function initializeTopicsMenu() {
-    // Поиск топиков
-    const searchInput = document.getElementById('topics-search');
-    if (searchInput) {
-        searchInput.addEventListener('input', filterTopics);
-    }
-    
-    // Быстрые кнопки
+    // Только быстрые кнопки без текстового поиска
     setupQuickButtons();
 }
 
 function setupQuickButtons() {
     const quickButtonsContainer = document.getElementById('quick-topics-buttons');
     if (!quickButtonsContainer) return;
+    
+    // Очищаем контейнер
+    quickButtonsContainer.innerHTML = '';
+    
+    const searchBy = document.querySelector('input[name="search_by"]:checked')?.value || 'topics';
+    if (searchBy === 'topic_types') {
+        // В режиме типов топиков быстрые кнопки не отображаем
+        return;
+    }
     
     const quickTopics = [
         { name: 'Все камеры', topics: ['/sensing/camera/LF', '/sensing/camera/CF', '/sensing/camera/RF'] },
@@ -240,31 +247,9 @@ function toggleQuickSelection(button, topics) {
     }
     
     updateTopicsDisplay();
-    updateHiddenSelect();
 }
 
-function filterTopics() {
-    const searchTerm = document.getElementById('topics-search').value.toLowerCase();
-    const topicItems = document.querySelectorAll('.topic-item');
-    
-    topicItems.forEach(item => {
-        const topicName = item.querySelector('.topic-name').textContent.toLowerCase();
-        const topicDesc = item.querySelector('.topic-description')?.textContent.toLowerCase() || '';
-        
-        if (topicName.includes(searchTerm) || topicDesc.includes(searchTerm)) {
-            item.style.display = 'flex';
-        } else {
-            item.style.display = 'none';
-        }
-    });
-    
-    // Показываем/скрываем группы в зависимости от результатов поиска
-    const groups = document.querySelectorAll('.topic-group');
-    groups.forEach(group => {
-        const visibleItems = group.querySelectorAll('.topic-item[style*="flex"]').length;
-        group.style.display = visibleItems > 0 ? 'block' : 'none';
-    });
-}
+// Убрали текстовое поле поиска
 
 function updateTopicsDisplay() {
     const topicItems = document.querySelectorAll('.topic-item');
@@ -279,32 +264,57 @@ function updateTopicsDisplay() {
 }
 
 function updateHiddenSelect() {
-    // Обновляем скрытый select для совместимости с формой
-    const hiddenSelect = document.getElementById('topics-select');
-    hiddenSelect.innerHTML = '';
-    selectedTopics.forEach(topic => {
-        const option = document.createElement('option');
-        option.value = topic;
-        option.selected = true;
-        hiddenSelect.appendChild(option);
-    });
+    // Функция больше не нужна, но оставляем для совместимости
+    // selectedTopics теперь используется напрямую
+}
+
+// Загрузка данных в зависимости от режима (топики / типы топиков)
+function loadTopicsOrTypes() {
+    const searchBy = document.querySelector('input[name="search_by"]:checked')?.value || 'topics';
+    const topicsLabel = document.getElementById('topics-label');
+    if (topicsLabel) {
+        topicsLabel.textContent = searchBy === 'topic_types' ? 'Типы топиков:' : 'Топики:';
+    }
+    
+    const url = searchBy === 'topic_types' ? '/get_topic_types' : '/get_topics';
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            allTopics = data.data || [];
+            selectedTopics.clear();
+            createTopicsGroups(allTopics);
+            setupQuickButtons();
+            updateTopicsDisplay();
+        });
 }
 
 function loadTopics() {
+    const topicsLabel = document.getElementById('topics-label');
+    if (topicsLabel) topicsLabel.textContent = 'Топики:';
     fetch('/get_topics')
         .then(r => r.json())
         .then(data => {
             allTopics = data.data || [];
-            topicsChoices.clearStore();
-            topicsChoices.setChoices(allTopics.map(val => ({ value: val, label: val })), 'value', 'label', true);
-            
-            // Создаем группы топиков
+            selectedTopics.clear();
             createTopicsGroups(allTopics);
+            setupQuickButtons();
+            updateTopicsDisplay();
         });
 }
 
 function createTopicsGroups(topics) {
-    // Определяем группы топиков
+    const searchBy = document.querySelector('input[name="search_by"]:checked')?.value || 'topics';
+    if (searchBy === 'topic_types') {
+        topicsGroups = {
+            'Типы топиков': {
+                icon: '📋',
+                topics: topics,
+                description: 'Доступные типы топиков'
+            }
+        };
+        renderTopicsGroups();
+        return;
+    }
     const groups = {
         'Камеры': {
             icon: '📷',
@@ -337,7 +347,6 @@ function createTopicsGroups(topics) {
             description: 'Другие топики'
         }
     };
-    
     topicsGroups = groups;
     renderTopicsGroups();
 }
@@ -398,6 +407,13 @@ function renderTopicsGroups() {
 }
 
 function getTopicDescription(topic) {
+    const searchBy = document.querySelector('input[name="search_by"]:checked')?.value || 'topics';
+    if (searchBy === 'topic_types') {
+        if (topic.includes('Image')) return 'Изображения с сенсоров';
+        if (topic.includes('TFMessage')) return 'Сообщения трансформаций';
+        if (topic.includes('DiagnosticArray')) return 'Диагностические массивы';
+        return 'Тип сообщения топика';
+    }
     const descriptions = {
         '/sensing/camera/LF': 'Левая передняя камера',
         '/sensing/camera/CF': 'Центральная передняя камера',
@@ -408,7 +424,6 @@ function getTopicDescription(topic) {
         '/diagnostics': 'Диагностическая информация системы',
         '/vehicle/status/twist': 'Статус движения транспортного средства'
     };
-    
     return descriptions[topic] || 'Данные топика';
 }
 
@@ -420,8 +435,6 @@ function toggleTopicSelection(topic, element) {
         selectedTopics.add(topic);
         element.classList.add('selected');
     }
-    
-    updateHiddenSelect();
 }
 
 function loadWeather() {
@@ -468,7 +481,7 @@ if (searchForm) {
     const filters = {
         area: form.area.value,
         map_polygons: mapPolygons,
-        selected_topics: topicsChoices ? topicsChoices.getValue(true) : [],
+        selected_topics: Array.from(selectedTopics),
         date_start: '',
         date_end: '',
         time_slider: [0, 23],
